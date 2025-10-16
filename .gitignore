@@ -1,6 +1,7 @@
 # folder
 pretrained_word2vec
 .claude
+__pychache__
 
 # files
 *.memo.md
