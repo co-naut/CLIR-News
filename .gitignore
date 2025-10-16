@@ -1,3 +1,6 @@
 # folder
 pretrained_word2vec
 .claude
+
+# files
+*.memo.md
