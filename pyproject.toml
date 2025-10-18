@@ -1,0 +1,9 @@
+[project]
+name = "clir-news"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "gensim>=4.4.0",
+    "numpy>=2.3.4",
+    "scipy>=1.16.2",
+]
