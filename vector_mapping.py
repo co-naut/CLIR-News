@@ -371,6 +371,84 @@ class DictionaryParser:
                 f"to load a different dictionary."
             )
 
+    def _contains_chinese(self, text: str) -> bool:
+        """
+        Check if text contains Chinese characters.
+
+        Args:
+            text: Text to check for Chinese characters
+
+        Returns:
+            True if text contains Chinese characters, False otherwise
+
+        Examples:
+            >>> parser = DictionaryParser()
+            >>> parser._contains_chinese('hello')
+            False
+            >>> parser._contains_chinese('hello中国')
+            True
+        """
+        for char in text:
+            if '\u4e00' <= char <= '\u9fff':
+                return True
+        return False
+
+    def _extract_single_word(self, text: str) -> Optional[str]:
+        """
+        Extract a single English word from definition text.
+
+        Processing order:
+        1. Remove all parentheses
+        2. If semicolons present: extract first single-word part
+        3. If commas present with pattern "{word}, ...": extract that word
+        4. Otherwise: return text if it's a single word
+
+        Args:
+            text: English definition text to process
+
+        Returns:
+            Single English word if extraction successful, None otherwise
+
+        Examples:
+            >>> parser = DictionaryParser()
+            >>> parser._extract_single_word('cat (animal); feline')
+            'feline'
+            >>> parser._extract_single_word('run, move quickly')
+            'run'
+            >>> parser._extract_single_word('very good; extremely nice')
+            None
+            >>> parser._extract_single_word('cat')
+            'cat'
+        """
+        # Step 1: Remove parentheses
+        text = text.replace('(', '').replace(')', '')
+
+        # Step 2: Check for semicolons
+        if ';' in text:
+            parts = [part.strip() for part in text.split(';')]
+            # Look for first single-word part
+            for part in parts:
+                if part and ' ' not in part:
+                    return part
+            # No single word found
+            return None
+
+        # Step 3: Check for comma pattern
+        if ',' in text:
+            first_part = text.split(',')[0].strip()
+            # Check if first part is a single word
+            if first_part and ' ' not in first_part:
+                return first_part
+            # Not a single word
+            return None
+
+        # Step 4: Check if entire text is a single word
+        text = text.strip()
+        if text and ' ' not in text:
+            return text
+
+        return None
+
     def _convert_with_variants(
         self,
         chinese_text: str,
@@ -474,18 +552,29 @@ class DictionaryParser:
             # Split definitions by '/'
             def_list = [d.strip() for d in definitions.split('/') if d.strip()]
 
-            # Use the first English definition (most common meaning)
-            if not def_list:
+            # Only accept entries with exactly one definition
+            if len(def_list) != 1:
                 continue
 
             english = def_list[0]
 
+            # Skip if English definition contains Chinese characters
+            if self._contains_chinese(english):
+                continue
+
+            # Extract single English word from definition
+            english_word = self._extract_single_word(english)
+            if english_word is None:
+                continue
+
             # Generate variants based on include_traditional
             chinese_variants = self._convert_with_variants(simplified, include_traditional)
 
-            # Add a pair for each variant
+            # Add a pair for each variant, but only if Chinese is also a single word
             for chinese in chinese_variants:
-                pairs.append((chinese, english))
+                # Validate Chinese is a single word (no spaces)
+                if ' ' not in chinese.strip():
+                    pairs.append((chinese, english_word))
 
         # Store results
         self.pairs = pairs
